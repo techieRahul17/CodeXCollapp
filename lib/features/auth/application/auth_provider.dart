@@ -10,33 +10,28 @@ AuthRepository authRepository(AuthRepositoryRef ref) {
 }
 
 @riverpod
-Stream<User?> authState(AuthStateRef ref) {
-  return ref.watch(authRepositoryProvider).authStateChanges;
-}
-
-@riverpod
 class AuthController extends _$AuthController {
   @override
-  FutureOr<void> build() {}
-
-  Future<void> signIn(String email, String password) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => 
-      ref.read(authRepositoryProvider).signInWithEmailAndPassword(email, password)
-    );
+  Future<User?> build() async {
+    // Initial auth state (already logged in or not)
+    return ref.read(authRepositoryProvider).currentUser;
   }
 
-  Future<void> register(String email, String password) async {
+  Future<void> signInWithGoogle() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => 
-      ref.read(authRepositoryProvider).registerWithEmailAndPassword(email, password)
-    );
+
+    state = await AsyncValue.guard(() async {
+      return ref.read(authRepositoryProvider).signInWithGoogle();
+    });
   }
 
   Future<void> signOut() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => 
-      ref.read(authRepositoryProvider).signOut()
-    );
+
+    state = await AsyncValue.guard(() async {
+      await ref.read(authRepositoryProvider).signOut();
+      return null;
+    });
   }
 }
+
