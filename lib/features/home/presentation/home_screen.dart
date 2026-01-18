@@ -321,6 +321,11 @@ class HomeScreen extends ConsumerWidget {
             onTap: () => context.push('/events'),
           ),
           ListTile(
+            leading: const Icon(Icons.radio_outlined, color: AppTheme.accent),
+            title: const Text("CodeCast FM", style: TextStyle(color: AppTheme.accent, fontWeight: FontWeight.bold)),
+            onTap: () => context.push('/codecast'),
+          ),
+          ListTile(
             leading: const Icon(Icons.logout, color: Colors.white),
             title: const Text("Logout", style: TextStyle(color: Colors.white)),
             onTap: () {

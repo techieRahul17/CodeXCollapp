@@ -46,10 +46,10 @@ class ProjectsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       "AI Health Assistant",
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                     ),
@@ -73,15 +73,15 @@ class ProjectsScreen extends StatelessWidget {
                   style: TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 12),
-                Row(
+                const Row(
                   children: [
                     CircleAvatar(
                       radius: 12,
                       backgroundColor: Colors.grey,
                       child: Text("RD", style: TextStyle(fontSize: 10, color: Colors.white)),
                     ),
-                    const SizedBox(width: 8),
-                    const Text("Rahul Dev", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    SizedBox(width: 8),
+                    Text("Rahul Dev", style: TextStyle(color: Colors.white54, fontSize: 12)),
                   ],
                 ),
               ],

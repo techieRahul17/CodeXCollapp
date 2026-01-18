@@ -35,10 +35,10 @@ class EventsScreen extends StatelessWidget {
                 children: [
                   Container(
                     height: 120,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.white10,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      image: const DecorationImage(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                      image: DecorationImage(
                         image: NetworkImage("https://via.placeholder.com/400x200"), // Placeholder
                         fit: BoxFit.cover,
                       ),

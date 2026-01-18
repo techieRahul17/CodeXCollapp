@@ -8,6 +8,7 @@ import '../../features/resources/presentation/resources_screen.dart';
 import '../../features/events/presentation/events_screen.dart';
 import '../../features/projects/presentation/projects_screen.dart';
 import '../../features/auth/application/auth_provider.dart';
+import '../../features/codecast/presentation/codecast_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -55,6 +56,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/projects',
         builder: (context, state) => const ProjectsScreen(),
+      ),
+      GoRoute(
+        path: '/codecast',
+        builder: (context, state) => const CodeCastScreen(),
       ),
     ],
   );

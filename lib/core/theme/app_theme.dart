@@ -19,11 +19,9 @@ class AppTheme {
     colorScheme: const ColorScheme.dark(
       primary: primary,
       secondary: secondary,
-      background: background,
       surface: surface,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
-      onBackground: textWhite,
       onSurface: textWhite,
     ),
     textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme).copyWith(
