@@ -1,22 +1,85 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/common_widgets/glass_card.dart';
 import '../../../core/common_widgets/gradient_button.dart';
 import '../../../core/utils/avatar_generator.dart';
 import '../../auth/application/auth_provider.dart';
+import '../../../services/github_service.dart'; // Your existing service
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // In a real app, we would fetch the user from a provider
-    const String userName = "Rahul V S"; 
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final TextEditingController _controller = TextEditingController();
+  List<Map<String, dynamic>> repos = [];
+  bool loading = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchRepos() async {
+    final username = _controller.text.trim();
+    if (username.isEmpty) return;
+
+    setState(() {
+      loading = true;
+      repos = [];
+    });
+
+    try {
+      final data = await fetchStarredRepos(username);
+      setState(() {
+        repos = data;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  Widget _buildRepoList() {
+    if (repos.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: repos.map((repo) {
+        return ListTile(
+          title: Text(repo['name'], style: const TextStyle(color: Colors.white)),
+          subtitle:
+              Text('⭐ ${repo['stars']}  •  ${repo['owner']}', style: const TextStyle(color: Colors.white70)),
+          onTap: () async {
+            final uri = Uri.parse(repo['url']);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Could not launch URL")),
+              );
+            }
+          },
+        );
+      }).toList(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const String userName = "Rahul V S";
     const String userRole = "Member";
-    
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       extendBodyBehindAppBar: true,
@@ -44,7 +107,7 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      drawer: _buildDrawer(context, ref),
+      drawer: _buildDrawer(),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -63,6 +126,8 @@ class HomeScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildHeroSection(userName, userRole),
+                    const SizedBox(height: 24),
+                    _buildGithubSection(),
                     const SizedBox(height: 24),
                     _buildSectionHeader("My Roadmap"),
                     const SizedBox(height: 12),
@@ -85,6 +150,90 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildGithubSection() {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "GitHub Starred Repositories",
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: "Enter GitHub username",
+              hintStyle: const TextStyle(color: Colors.white54),
+              filled: true,
+              fillColor: Colors.black26,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GradientButton(
+            text: "Fetch Repos",
+            onPressed: _fetchRepos,
+          ),
+          const SizedBox(height: 16),
+          if (loading)
+            const Center(child: CircularProgressIndicator()),
+          if (!loading) _buildRepoList(),
+        ],
+      ),
+    );
+  }
+
+  Drawer _buildDrawer() {
+    return Drawer(
+      backgroundColor: AppTheme.surface,
+      child: ListView(
+        children: [
+          const DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [AppTheme.primary, AppTheme.secondary]),
+            ),
+            child: Center(
+              child: Text("MENU", style: TextStyle(fontFamily: "Orbitron", fontSize: 24, color: Colors.white)),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.home, color: Colors.white),
+            title: const Text("Home", style: TextStyle(color: Colors.white)),
+            onTap: () {},
+          ),
+          ListTile(
+            leading: const Icon(Icons.book, color: Colors.white),
+            title: const Text("Resources", style: TextStyle(color: Colors.white)),
+            onTap: () => context.push('/resources'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.group, color: Colors.white),
+            title: const Text("Collaboration", style: TextStyle(color: Colors.white)),
+            onTap: () => context.push('/projects'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.event, color: Colors.white),
+            title: const Text("Events", style: TextStyle(color: Colors.white)),
+            onTap: () => context.push('/events'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.white),
+            title: const Text("Logout", style: TextStyle(color: Colors.white)),
+            onTap: () {
+              ref.read(authControllerProvider.notifier).signOut();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------- UI helper widgets (unchanged) --------------------------
   Widget _buildHeroSection(String name, String role) {
     return GlassCard(
       child: Row(
@@ -177,160 +326,78 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLine() {
-    return Container(
-      width: 40,
-      height: 2,
-      margin: const EdgeInsets.only(bottom: 24, left: 4, right: 4),
-      color: Colors.white24,
-    );
-  }
+  Widget _buildLine() => Container(width: 40, height: 2, margin: const EdgeInsets.only(bottom: 24, left: 4, right: 4), color: Colors.white24);
 
-  Widget _buildProjectsCarousel() {
-    return SizedBox(
-      height: 160,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
+  Widget _buildProjectsCarousel() => SizedBox(height: 160, child: ListView(scrollDirection: Axis.horizontal, children: [
+    _buildProjectCard("Portfolio App", "Flutter"),
+    _buildProjectCard("AI Chatbot", "Python"),
+    _buildProjectCard("Club Website", "React"),
+  ]));
+
+  Widget _buildProjectCard(String title, String tech) => Container(
+    width: 200,
+    margin: const EdgeInsets.only(right: 16),
+    child: GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildProjectCard("Portfolio App", "Flutter"),
-          _buildProjectCard("AI Chatbot", "Python"),
-          _buildProjectCard("Club Website", "React"),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
+              Text(tech, style: const TextStyle(color: AppTheme.primary, fontSize: 12)),
+            ],
+          ),
+          const Row(mainAxisAlignment: MainAxisAlignment.end, children: [Icon(Icons.arrow_forward, color: Colors.white54)])
         ],
       ),
-    );
-  }
+    ),
+  );
 
-  Widget _buildProjectCard(String title, String tech) {
-    return Container(
-      width: 200,
-      margin: const EdgeInsets.only(right: 16),
-      child: GlassCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
-                ),
-                Text(
-                  tech,
-                  style: const TextStyle(color: AppTheme.primary, fontSize: 12),
-                ),
-              ],
-            ),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Icon(Icons.arrow_forward, color: Colors.white54),
-              ],
-            )
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildEventsList() => Column(children: [
+    _buildEventItem("Hackathon 2024", "Oct 24", "Main Auditorium"),
+    const SizedBox(height: 12),
+    _buildEventItem("Flutter Workshop", "Nov 02", "Lab 2"),
+  ]);
 
-  Widget _buildEventsList() {
-    return Column(
+  Widget _buildEventItem(String title, String date, String location) => GlassCard(
+    padding: const EdgeInsets.all(12),
+    child: Row(
       children: [
-        _buildEventItem("Hackathon 2024", "Oct 24", "Main Auditorium"),
-        const SizedBox(height: 12),
-        _buildEventItem("Flutter Workshop", "Nov 02", "Lab 2"),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppTheme.secondary.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              Text(date.split(" ")[0], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              Text(date.split(" ")[1], style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 12, color: Colors.white54),
+                  const SizedBox(width: 4),
+                  Text(location, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        GradientButton(text: "Join", onPressed: () {}).width(80).height(36),
       ],
-    );
-  }
-
-  Widget _buildEventItem(String title, String date, String location) {
-    return GlassCard(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.secondary.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              children: [
-                Text(date.split(" ")[0], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                Text(date.split(" ")[1], style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 12, color: Colors.white54),
-                    const SizedBox(width: 4),
-                    Text(location, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          GradientButton(
-            text: "Join",
-            onPressed: () {},
-          ).width(80).height(36), // Custom extension or wrap in SizedBox
-        ],
-      ),
-    );
-  }
-
-  Drawer _buildDrawer(BuildContext context, WidgetRef ref) {
-    return Drawer(
-      backgroundColor: AppTheme.surface,
-      child: ListView(
-        children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [AppTheme.primary, AppTheme.secondary]),
-            ),
-            child: Center(
-              child: Text("MENU", style: TextStyle(fontFamily: "Orbitron", fontSize: 24, color: Colors.white)),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.home, color: Colors.white),
-            title: const Text("Home", style: TextStyle(color: Colors.white)),
-            onTap: () {},
-          ),
-          ListTile(
-            leading: const Icon(Icons.book, color: Colors.white),
-            title: const Text("Resources", style: TextStyle(color: Colors.white)),
-            onTap: () => context.push('/resources'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.group, color: Colors.white),
-            title: const Text("Collaboration", style: TextStyle(color: Colors.white)),
-            onTap: () => context.push('/projects'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.event, color: Colors.white),
-            title: const Text("Events", style: TextStyle(color: Colors.white)),
-            onTap: () => context.push('/events'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.white),
-            title: const Text("Logout", style: TextStyle(color: Colors.white)),
-            onTap: () {
-               ref.read(authControllerProvider.notifier).signOut();
-            },
-          ),
-        ],
-      ),
-    );
-  }
+    ),
+  );
 }
 
 extension WidgetExt on Widget {
